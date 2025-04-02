@@ -4,7 +4,7 @@ App and device driver components to suport Neviweb devices in Hubitat. Neviweb i
 Neviweb130 will manage the zigbee devices connected to Neviweb via the GT130 gateway and the new wifi devices. It is presently almost up to date with Neviweb but some informations are still missing from Sinopé. 
 
 Supported Devices
-Here is a list of currently supported devices (not really all). Basically, it's everything that can be added in Neviweb.
+Here is a list of currently supported devices (not really all - please feel free to send pull request to add missing devices). Basically, it's everything that can be added in Neviweb.
 
 Zigbee thermostats:
 Sinopé TH1123ZB 3000W Line voltage thermostat
