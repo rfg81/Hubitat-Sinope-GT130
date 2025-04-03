@@ -5,7 +5,7 @@ import groovy.transform.Field
 @Field Utils = Utils_create();
 @Field List<String> LOG_LEVELS = ["error", "warn", "info", "debug", "trace"]
 @Field String DEFAULT_LOG_LEVEL = LOG_LEVELS[1]
-def driverVer() { return "0.1" }
+def driverVer() { return "0.2" }
 
 // Dynamic Attributes Using getConstant()
 def getUpdateAttributes() {
@@ -25,7 +25,7 @@ def getUpdateAttributes() {
 metadata {
     definition(name: "Neviweb Floor Thermostat Driver", namespace: "rferrazguimaraes", author: "Rangner Ferraz Guimaraes") {
         capability "Thermostat"
-        capability "TemperatureMeasurement"
+        capability "Temperature Measurement"
         capability "Refresh"
         capability "Actuator"
         capability "Sensor"
@@ -45,7 +45,6 @@ metadata {
         attribute "thermostatMode", "STRING"
         attribute "thermostatFanMode", "STRING"
         attribute "thermostatOperatingState", "STRING"
-        attribute "currentTemperature", "NUMBER"
         attribute "targetTemperature", "NUMBER"
         attribute "presetMode", "STRING"
         attribute "supportedHvacModes", "JSON_OBJECT"
@@ -87,7 +86,9 @@ def initialize() {
     sendEvent(name: "coolingSetpoint", value: state.minTemp, isStateChange: true)
     sendEvent(name: "thermostatSetpoint", value: state.targetTemp, isStateChange: true)
     sendEvent(name: "heatingSetpoint", value: state.minTemp, isStateChange: true)
-    
+    updateDataValue("lastRunningMode", "heat")
+  	state.lastRunningMode = "heat"
+
     schedule("0 */${settings.pollInterval} * * * ?", refresh)
 }
 
@@ -194,14 +195,15 @@ def updateInfo() {
                 }
                 state.gfciAlert = deviceData[parent.getConstant("ATTR_GFCI_ALERT")]
                 
-                sendEvent(name: "currentTemperature", value: state.tempDisplayValue ?: state.curTemp)
-                sendEvent(name: "targetTemperature", value: state.targetTemp)
-                sendEvent(name: "heatingSetpoint", value: state.minTemp)
-                sendEvent(name: "coolingSetpoint", value: state.maxTemp)
-			    sendEvent(name: "thermostatSetpoint", value: state.targetTemp)
+                sendEvent(name: "temperature", value: parent.formatTemperature(state.tempDisplayValue ?: state.curTemp))
+                sendEvent(name: "targetTemperature", value: parent.formatTemperature(state.targetTemp))
+                sendEvent(name: "heatingSetpoint", value: parent.formatTemperature(state.minTemp))
+                sendEvent(name: "coolingSetpoint", value: parent.formatTemperature(state.maxTemp))
+			    sendEvent(name: "thermostatSetpoint", value: parent.formatTemperature(state.targetTemp))
                 sendEvent(name: "thermostatMode", value: state.operationMode)
                 sendEvent(name: "wattage", value: state.wattage)
                 sendEvent(name: "DriverVersion", value: driverVer())
+                updateDataValue("lastRunningMode", state.operationMode) //this IS need for Google home
                 
             } else if (deviceData.errorCode == "ReadTimeout") {
                 Utils.toLogger("warn", "Timeout occurred while updating device ${device.label}. Check your network. (${deviceData})")
