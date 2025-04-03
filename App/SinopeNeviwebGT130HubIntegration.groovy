@@ -74,6 +74,10 @@ model 6812 = HP6000ZB-HS for Hisense, Haxxair and Zephyr heat pump*/
 @Field static final String CONF_NOTIFY = "notify"
 
 // Thermostat Attributes
+@Field final float SINOPE_MIN_TEMPERATURE_CELSIUS = 5.0
+@Field final float SINOPE_MAX_TEMPERATURE_CELSIUS = 30.0
+@Field final float SINOPE_MIN_TEMPERATURE_FAHRENHEIT = 41.0
+@Field final float SINOPE_MAX_TEMPERATURE_FAHRENHEIT = 86.0
 @Field static final String ATTR_INTENSITY = "intensity"
 @Field static final String ATTR_INTENSITY_MIN = "intensityMin"
 @Field static final String ATTR_WATTAGE = "loadConnected"
@@ -141,7 +145,7 @@ model 6812 = HP6000ZB-HS for Hisense, Haxxair and Zephyr heat pump*/
 @Field Utils = Utils_create();
 @Field List<String> LOG_LEVELS = ["error", "warn", "info", "debug", "trace"]
 @Field String DEFAULT_LOG_LEVEL = LOG_LEVELS[1]
-def driverVer() { return "0.1" }
+def driverVer() { return "0.2" }
 
 definition(
     name: 'Sinope Neviweb GT130 Hub Integration',
@@ -985,6 +989,89 @@ def getConstant(String name) {
 /**
  * Simple utilities for manipulation
  */
+float formatTemperature(temperature) {
+    formatTemperature(temperature, getTemperatureScale())
+}
+
+float formatTemperature(temperature, locationScale) {
+    Utils.toLogger("debug", "FormatTemperature - temperature before conversion: ${temperature} - locationScale: ${locationScale}")
+
+    def formattedTemperature = temperature as Float
+    
+    if(formattedTemperature > SINOPE_MAX_TEMPERATURE_CELSIUS) {
+        if (locationScale == "C") { // convert to celsius
+            formattedTemperature = fahrenheitToCelsius(formattedTemperature)
+            Utils.toLogger("debug", "FormatTemperature - temperature converted to celsius: ${formattedTemperature}")
+        } else {
+            formattedTemperature = convertTemperatureIfNeeded(formattedTemperature, locationScale, 1).toBigDecimal()
+        }
+    } else {
+        if (locationScale == "F") { // convert to fahrenheit
+            formattedTemperature = celsiusToFahrenheit(formattedTemperature)
+            Utils.toLogger("debug", "FormatTemperature - temperature converted to fahrenheit: ${formattedTemperature}")
+        } else {
+            formattedTemperature = convertTemperatureIfNeeded(formattedTemperature, locationScale, 1).toBigDecimal()
+        }
+    }
+    
+    if (locationScale == "C") { // celsius
+        formattedTemperature = roundToHalf(formattedTemperature)
+        Utils.toLogger("debug", "FormatTemperature - temperature roundToHalf celsius: ${formattedTemperature}")
+        formattedTemperature = Math.min(SINOPE_MAX_TEMPERATURE_CELSIUS, Math.max(SINOPE_MIN_TEMPERATURE_CELSIUS, formattedTemperature))
+    } else { // fahrenheit
+        formattedTemperature = (Math.round(formattedTemperature)).toDouble().round(0)
+        Utils.toLogger("debug", "FormatTemperature - temperature round fahrenheit: ${formattedTemperature}")
+        formattedTemperature = Math.min(SINOPE_MAX_TEMPERATURE_FAHRENHEIT, Math.max(SINOPE_MIN_TEMPERATURE_FAHRENHEIT, formattedTemperature))
+    }
+    
+    Utils.toLogger("debug", "FormatTemperature - temperature after conversion: ${formattedTemperature}")
+    
+    return formattedTemperature
+}
+
+float roundToHalf(float x) {
+    return (float) (Math.round(x * 2) / 2)
+}
+
+def getTemperatureScale() {
+    return "${location.temperatureScale}"
+}
+
+boolean isCelsius() {
+    return getTemperatureScale() == "C"
+}
+
+boolean isFahrenheit() {
+    return !isCelsius()
+}
+
+float getScaleStep() {
+    def step
+    
+    if (isCelsius()) {
+        step = 0.5
+    } else {
+        step = 1
+    }
+    
+    return step
+}
+
+float getMaxTemperature() {
+    if(isCelsius()) {
+        return SINOPE_MAX_TEMPERATURE_CELSIUS
+    } else {
+        return SINOPE_MAX_TEMPERATURE_FAHRENHEIT
+    }
+}
+
+float getMinTemperature() {
+    if(isCelsius()) {
+        return SINOPE_MIN_TEMPERATURE_CELSIUS
+    } else {
+        return SINOPE_MIN_TEMPERATURE_FAHRENHEIT
+    }
+}
 
 def Utils_create() {
     def instance = [:];
