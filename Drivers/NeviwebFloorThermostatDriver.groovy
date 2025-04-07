@@ -30,25 +30,13 @@ metadata {
         capability "Actuator"
         capability "Sensor"
 
-        command "setHeatingSetpoint", ["NUMBER"]
-        command "setCoolingSetpoint", ["NUMBER"]
-        command "setThermostatMode", ["ENUM"]
-        command "setThermostatFanMode", ["ENUM"]
-        command "setPresetMode", ["ENUM"]
-        command "setMinTemperature", ["NUMBER"]
-        command "setMaxTemperature", ["NUMBER"]
+        command "deviceLog", [[name: "Level*", type:"STRING", description: "Level of the message"], 
+                              [name: "Message*", type:"STRING", description: "Message"]] 
         command "setBacklightOn"
 		command "setBacklightOff"
 
-        attribute "heatingSetpoint", "NUMBER"
-        attribute "coolingSetpoint", "NUMBER"
-        attribute "thermostatMode", "STRING"
-        attribute "thermostatFanMode", "STRING"
-        attribute "thermostatOperatingState", "STRING"
-        attribute "targetTemperature", "NUMBER"
-        attribute "presetMode", "STRING"
-        attribute "supportedHvacModes", "JSON_OBJECT"
-        attribute "supportedPresetModes", "JSON_OBJECT"
+        attribute "minimumTemperature", "number"
+        attribute "maximumTemperature", "number"
         attribute "wattage", "NUMBER"
         attribute "DriverVersion", "string"
     }
@@ -196,11 +184,13 @@ def updateInfo() {
                 state.gfciAlert = deviceData[parent.getConstant("ATTR_GFCI_ALERT")]
                 
                 sendEvent(name: "temperature", value: parent.formatTemperature(state.tempDisplayValue ?: state.curTemp))
-                sendEvent(name: "targetTemperature", value: parent.formatTemperature(state.targetTemp))
-                sendEvent(name: "heatingSetpoint", value: parent.formatTemperature(state.minTemp))
+                sendEvent(name: "minimumTemperature", value: parent.formatTemperature(state.minTemp))
+                sendEvent(name: "maximumTemperature", value: parent.formatTemperature(state.maxTemp))                
                 sendEvent(name: "coolingSetpoint", value: parent.formatTemperature(state.maxTemp))
+                sendEvent(name: "heatingSetpoint", value: parent.formatTemperature(state.targetTemp))
 			    sendEvent(name: "thermostatSetpoint", value: parent.formatTemperature(state.targetTemp))
                 sendEvent(name: "thermostatMode", value: state.operationMode)
+                sendEvent(name: "thermostatOperatingState", value: (state.heatLevel > 10) ? "heating" : "idle")
                 sendEvent(name: "wattage", value: state.wattage)
                 sendEvent(name: "DriverVersion", value: driverVer())
                 updateDataValue("lastRunningMode", state.operationMode) //this IS need for Google home
@@ -274,8 +264,8 @@ def extraStateAttributes() {
     return data
 }
 
-def updateAttributes(data) {
-    Utils.toLogger("debug", "Updated attributes: ${data}")
+def updateAttributes(device) {
+    Utils.toLogger("debug", "Updated attributes: ${device}")
     try {
         updateInfo()
     } catch (Exception e) {
@@ -309,11 +299,19 @@ def applyBacklightPreference() {
 def setHeatingSetpoint(temp) {
     Utils.toLogger("debug", "Setting heating setpoint to ${temp}°C...")
     try {
-        parent.setTemperature(device.deviceNetworkId, temp)
         sendEvent(name: "heatingSetpoint", value: temp)
+        runIn(2, 'updateChidTemp', [data:[temperature: temp]])
     } catch (Exception e) {
         Utils.toLogger("error", "Error setting heating setpoint: ${e.message}")
     }
+}
+
+def updateChidTemp(data) {
+    Utils.toLogger("debug", "updateChidTemp(${data.temperature}) was called")
+    def temperature = parent.formatTemperature(data.temperature)
+    Utils.toLogger("debug", "updateChidTemp - temperature: ${temperature}")
+    parent.setTemperature(device.deviceNetworkId, temperature)
+    runIn(2, 'updateInfo')
 }
 
 def setCoolingSetpoint(temp) {
