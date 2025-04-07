@@ -75,7 +75,7 @@ model 6812 = HP6000ZB-HS for Hisense, Haxxair and Zephyr heat pump*/
 
 // Thermostat Attributes
 @Field final float SINOPE_MIN_TEMPERATURE_CELSIUS = 5.0
-@Field final float SINOPE_MAX_TEMPERATURE_CELSIUS = 30.0
+@Field final float SINOPE_MAX_TEMPERATURE_CELSIUS = 36.0
 @Field final float SINOPE_MIN_TEMPERATURE_FAHRENHEIT = 41.0
 @Field final float SINOPE_MAX_TEMPERATURE_FAHRENHEIT = 86.0
 @Field static final String ATTR_INTENSITY = "intensity"
@@ -145,7 +145,7 @@ model 6812 = HP6000ZB-HS for Hisense, Haxxair and Zephyr heat pump*/
 @Field Utils = Utils_create();
 @Field List<String> LOG_LEVELS = ["error", "warn", "info", "debug", "trace"]
 @Field String DEFAULT_LOG_LEVEL = LOG_LEVELS[1]
-def driverVer() { return "0.2" }
+def driverVer() { return "0.3" }
 
 definition(
     name: 'Sinope Neviweb GT130 Hub Integration',
